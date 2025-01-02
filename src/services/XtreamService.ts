@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { IAuthInfo, ICategory, IChannel, IEPGProgram, ISeriesChannel, IVodChannel } from '@/types';
+import { ICategory, IChannel, IEPGProgram, ISeriesChannel, IVodChannel } from '@/types';
 
 export class XtreamService {
   private baseUrl: string;

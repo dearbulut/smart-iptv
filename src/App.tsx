@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemeProvider } from 'styled-components';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ServiceProvider } from '@/contexts/ServiceContext';
@@ -16,38 +16,30 @@ import Favorites from '@/pages/Favorites/Favorites';
 
 const queryClient = new QueryClient();
 
-interface PageProps {
-  onBack: () => void;
-}
-
-interface LiveTVProps extends PageProps {
-  onChannelSelect: (channel: IChannel) => void;
-}
-
-interface MoviesProps extends PageProps {
-  onMovieSelect: (movie: IMovie) => void;
-}
-
-interface SeriesProps extends PageProps {
-  onSeriesSelect: (series: ISeries) => void;
-}
-
-interface SettingsProps extends PageProps {
-  onSave: (settings: ISettings) => void;
-}
-
-interface FavoritesProps extends PageProps {
-  onPlayChannel: (channel: IChannel) => void;
-  onPlayMovie: (movie: IMovie) => void;
-  onPlaySeries: (series: ISeries) => void;
-}
-
 const App: React.FC = () => {
   const services = useServices();
   const [currentPage, setCurrentPage] = useState<string>('home');
   const [selectedChannel, setSelectedChannel] = useState<IChannel | null>(null);
   const [selectedMovie, setSelectedMovie] = useState<IMovie | null>(null);
   const [selectedSeries, setSelectedSeries] = useState<ISeries | null>(null);
+
+  useEffect(() => {
+    if (selectedChannel) {
+      services.channelService.getStreamUrl(selectedChannel);
+    }
+  }, [selectedChannel, services.channelService]);
+
+  useEffect(() => {
+    if (selectedMovie) {
+      services.movieService.getStreamUrl(selectedMovie);
+    }
+  }, [selectedMovie, services.movieService]);
+
+  useEffect(() => {
+    if (selectedSeries) {
+      // Handle series selection
+    }
+  }, [selectedSeries]);
 
   const handleNavigate = (page: string) => {
     setCurrentPage(page);
