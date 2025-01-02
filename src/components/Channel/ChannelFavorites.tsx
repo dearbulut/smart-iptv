@@ -1,112 +1,83 @@
-import React, { useEffect, useState } from 'react';
-import styled, { keyframes } from 'styled-components';
+import React, { useState, useEffect } from 'react';
+import styled from 'styled-components';
 import { IChannel } from '@/types';
 import { useFavoritesService } from '@/contexts/ServiceContext';
 
 interface ChannelFavoritesProps {
   onSelect: (channel: IChannel) => void;
-  onClose?: () => void;
 }
 
-const slideIn = keyframes`
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-`;
-
 const Container = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 400px;
-  background: ${({ theme }) => theme.colors.background.card};
-  padding: ${({ theme }) => theme.spacing.xl};
-  animation: ${slideIn} 0.3s ease-in-out;
-  z-index: 1000;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  padding: 1rem;
 `;
 
 const Title = styled.h2`
-  font-size: ${({ theme }) => theme.typography.sizes.xl};
-  color: ${({ theme }) => theme.colors.text.primary};
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
+  margin: 0 0 1rem;
+  color: ${({ theme }) => theme.colors.text};
 `;
 
-const ChannelList = styled.div`
-  flex: 1;
+const List = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   overflow-y: auto;
 `;
 
 const ChannelItem = styled.div<{ selected?: boolean }>`
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.md};
-  padding: ${({ theme }) => theme.spacing.md};
-  background: ${({ theme, selected }) =>
-    selected ? theme.colors.background.hover : 'transparent'};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
+  padding: 0.5rem;
+  border-radius: 4px;
+  background-color: ${({ theme, selected }) =>
+    selected ? theme.colors.primary : theme.colors.background};
   cursor: pointer;
-  transition: ${({ theme }) => theme.transitions.default};
 
-  &.focused {
-    background: ${({ theme }) => theme.colors.background.hover};
-    border: 2px solid ${({ theme }) => theme.colors.secondary.main};
+  &:hover {
+    background-color: ${({ theme }) => theme.colors.primaryLight};
   }
 `;
 
-const ChannelLogo = styled.img`
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
-  background: ${({ theme }) => theme.colors.background.main};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
+const ChannelIcon = styled.img`
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  margin-right: 1rem;
+  object-fit: cover;
 `;
 
 const ChannelInfo = styled.div`
   flex: 1;
-  min-width: 0;
 `;
 
 const ChannelName = styled.div`
-  font-size: ${({ theme }) => theme.typography.sizes.md};
   font-weight: bold;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: ${({ theme }) => theme.colors.text};
 `;
 
 const ChannelNumber = styled.div`
-  font-size: ${({ theme }) => theme.typography.sizes.sm};
-  color: ${({ theme }) => theme.colors.text.secondary};
+  color: ${({ theme }) => theme.colors.textSecondary};
 `;
 
 const NoFavorites = styled.div`
-  text-align: center;
-  padding: ${({ theme }) => theme.spacing.xl};
-  color: ${({ theme }) => theme.colors.text.secondary};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: ${({ theme }) => theme.colors.textSecondary};
 `;
 
-const HelpText = styled.div`
-  text-align: center;
-  padding: ${({ theme }) => theme.spacing.md};
-  color: ${({ theme }) => theme.colors.text.secondary};
-  font-size: ${({ theme }) => theme.typography.sizes.sm};
-  border-top: 1px solid ${({ theme }) => theme.colors.background.hover};
-  margin-top: ${({ theme }) => theme.spacing.md};
-`;
-
-const ChannelFavorites: React.FC<ChannelFavoritesProps> = ({
-  onSelect,
-  onClose,
-}) => {
+const ChannelFavorites: React.FC<ChannelFavoritesProps> = ({ onSelect }) => {
   const favoritesService = useFavoritesService();
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const favorites = favoritesService.getFavorites();
+  const [favorites, setFavorites] = useState<IChannel[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState<number>(0);
+
+  useEffect(() => {
+    const items = favoritesService.getFavorites();
+    setFavorites(items.filter((item): item is IChannel => 'epgChannelId' in item));
+  }, [favoritesService]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -120,60 +91,54 @@ const ChannelFavorites: React.FC<ChannelFavoritesProps> = ({
         case 'Enter':
           if (favorites[selectedIndex]) {
             onSelect(favorites[selectedIndex]);
-            onClose?.();
           }
           break;
         case 'Delete':
         case 'Backspace':
           if (favorites[selectedIndex]) {
-            favoritesService.removeFavorite(favorites[selectedIndex].streamId);
+            favoritesService.removeFavorite(favorites[selectedIndex]);
+            setFavorites((prev) => prev.filter((_, i) => i !== selectedIndex));
+            setSelectedIndex((prev) => Math.min(prev, favorites.length - 2));
           }
-          break;
-        case 'Escape':
-          onClose?.();
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [favorites, selectedIndex, onSelect, onClose, favoritesService]);
+  }, [favorites, selectedIndex, onSelect, favoritesService]);
+
+  if (favorites.length === 0) {
+    return <NoFavorites>No favorite channels</NoFavorites>;
+  }
 
   return (
     <Container>
       <Title>Favorite Channels</Title>
-      <ChannelList>
-        {favorites.length > 0 ? (
-          favorites.map((channel, index) => (
-            <ChannelItem
-              key={channel.streamId}
-              selected={index === selectedIndex}
-              className={index === selectedIndex ? 'focused' : ''}
-              onClick={() => {
-                onSelect(channel);
-                onClose?.();
+      <List>
+        {favorites.map((channel, index) => (
+          <ChannelItem
+            key={channel.streamId}
+            selected={index === selectedIndex}
+            onClick={() => {
+              setSelectedIndex(index);
+              onSelect(channel);
+            }}
+          >
+            <ChannelIcon
+              src={channel.streamIcon || '/placeholder.png'}
+              alt={channel.name}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/placeholder.png';
               }}
-            >
-              <ChannelLogo
-                src={channel.streamIcon || '/placeholder.png'}
-                alt={channel.name}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/placeholder.png';
-                }}
-              />
-              <ChannelInfo>
-                <ChannelName>{channel.name}</ChannelName>
-                <ChannelNumber>#{channel.num}</ChannelNumber>
-              </ChannelInfo>
-            </ChannelItem>
-          ))
-        ) : (
-          <NoFavorites>No favorite channels yet</NoFavorites>
-        )}
-      </ChannelList>
-      <HelpText>
-        Press DELETE to remove from favorites • Press ENTER to select • Press RETURN to close
-      </HelpText>
+            />
+            <ChannelInfo>
+              <ChannelName>{channel.name}</ChannelName>
+              <ChannelNumber>#{channel.num}</ChannelNumber>
+            </ChannelInfo>
+          </ChannelItem>
+        ))}
+      </List>
     </Container>
   );
 };

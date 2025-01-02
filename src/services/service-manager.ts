@@ -1,140 +1,111 @@
-import { XtreamService, createXtreamService } from './xtream.service';
-import { ChannelService, createChannelService } from './channel.service';
-import { EPGService, createEPGService } from './epg.service';
-import { FavoritesService, createFavoritesService } from './favorites.service';
-import { SettingsService, createSettingsService } from './settings.service';
-import { ErrorService, createErrorService } from './error.service';
+import { ISettings } from '@/types';
+import {
+  XtreamService,
+  ChannelService,
+  EPGService,
+  FavoritesService,
+  SettingsService,
+  ErrorService,
+  MovieService,
+  SeriesService,
+} from '@/services';
 
-class ServiceManager {
-  private static instance: ServiceManager;
-  private xtreamService?: XtreamService;
-  private channelService?: ChannelService;
-  private epgService?: EPGService;
-  private favoritesService?: FavoritesService;
-  private settingsService?: SettingsService;
-  private errorService?: ErrorService;
+export class ServiceManager {
+  private xtreamService: XtreamService;
+  private channelService: ChannelService;
+  private epgService: EPGService;
+  private favoritesService: FavoritesService;
+  private settingsService: SettingsService;
+  private errorService: ErrorService;
+  private movieService: MovieService;
+  private seriesService: SeriesService;
 
-  private constructor() {
-    this.initialize();
+  private epgUpdateInterval: NodeJS.Timeout | null = null;
+
+  constructor() {
+    this.settingsService = new SettingsService();
+    const settings = this.settingsService.getSettings();
+
+    this.xtreamService = new XtreamService(
+      settings.server?.url || '',
+      settings.server?.username || '',
+      settings.server?.password || ''
+    );
+
+    this.channelService = new ChannelService(this.xtreamService);
+    this.epgService = new EPGService(this.xtreamService);
+    this.favoritesService = new FavoritesService();
+    this.errorService = new ErrorService();
+    this.movieService = new MovieService(this.xtreamService);
+    this.seriesService = new SeriesService(this.xtreamService);
+
+    this.setupEPGUpdate();
+    this.setupSettingsListener();
+    this.setupErrorHandler();
   }
 
-  public static getInstance(): ServiceManager {
-    if (!ServiceManager.instance) {
-      ServiceManager.instance = new ServiceManager();
+  private setupEPGUpdate(): void {
+    const settings = this.settingsService.getSettings();
+    if (settings.epg?.enabled) {
+      this.startEPGUpdate(settings.epg.updateInterval || 3600000);
     }
-    return ServiceManager.instance;
   }
 
-  private initialize(): void {
+  private setupSettingsListener(): void {
+    this.settingsService.addListener((newSettings: ISettings) => {
+      if (newSettings.epg?.enabled) {
+        this.startEPGUpdate(newSettings.epg.updateInterval || 3600000);
+      } else {
+        this.stopEPGUpdate();
+      }
+    });
+  }
+
+  private setupErrorHandler(): void {
+    window.onerror = (message, source, lineno, colno, error) => {
+      this.errorService.handleError(error || new Error(String(message)));
+    };
+
+    window.onunhandledrejection = (event) => {
+      this.errorService.handleError(event.reason);
+    };
+  }
+
+  private startEPGUpdate(interval: number): void {
+    this.stopEPGUpdate();
+    this.epgUpdateInterval = setInterval(() => {
+      this.updateEPG();
+    }, interval);
+  }
+
+  private stopEPGUpdate(): void {
+    if (this.epgUpdateInterval) {
+      clearInterval(this.epgUpdateInterval);
+      this.epgUpdateInterval = null;
+    }
+  }
+
+  private async updateEPG(): Promise<void> {
     try {
-      // Initialize services in the correct order
-      this.errorService = createErrorService();
-      this.settingsService = createSettingsService();
-
-      const settings = this.settingsService.getSettings();
-      this.xtreamService = createXtreamService({
-        baseUrl: settings.server.url,
-        auth: {
-          username: settings.server.username,
-          password: settings.server.password,
-        },
-      });
-
-      this.channelService = createChannelService(
-        this.xtreamService,
-        settings.epg.updateInterval
-      );
-
-      this.epgService = createEPGService(settings.epg.updateInterval);
-      this.favoritesService = createFavoritesService();
-
-      // Listen for settings changes
-      this.settingsService.addListener((newSettings) => {
-        this.reinitializeServices(newSettings);
-      });
+      const channels = await this.channelService.getChannels();
+      for (const channel of channels) {
+        await this.epgService.getEPG(channel.streamId.toString());
+      }
     } catch (error) {
-      console.error('Error initializing services:', error);
-      this.errorService?.logError(
-        'ServiceManager',
-        'Failed to initialize services',
-        error
-      );
+      this.errorService.handleError(error as Error);
     }
   }
 
-  private reinitializeServices(settings: any): void {
+  public async initialize(): Promise<void> {
     try {
-      // Reinitialize Xtream service with new settings
-      this.xtreamService = createXtreamService({
-        baseUrl: settings.server.url,
-        auth: {
-          username: settings.server.username,
-          password: settings.server.password,
-        },
-      });
-
-      // Reinitialize dependent services
-      this.channelService = createChannelService(
-        this.xtreamService,
-        settings.epg.updateInterval
-      );
-
-      this.epgService = createEPGService(settings.epg.updateInterval);
-
-      // Clear caches
-      this.channelService.clearCache();
-      this.epgService.clearCache();
+      await this.xtreamService.authenticate();
+      await this.updateEPG();
     } catch (error) {
-      console.error('Error reinitializing services:', error);
-      this.errorService?.logError(
-        'ServiceManager',
-        'Failed to reinitialize services',
-        error
-      );
+      this.errorService.handleError(error as Error);
     }
   }
 
-  public getXtreamService(): XtreamService {
-    if (!this.xtreamService) {
-      throw new Error('XtreamService not initialized');
-    }
-    return this.xtreamService;
-  }
-
-  public getChannelService(): ChannelService {
-    if (!this.channelService) {
-      throw new Error('ChannelService not initialized');
-    }
-    return this.channelService;
-  }
-
-  public getEPGService(): EPGService {
-    if (!this.epgService) {
-      throw new Error('EPGService not initialized');
-    }
-    return this.epgService;
-  }
-
-  public getFavoritesService(): FavoritesService {
-    if (!this.favoritesService) {
-      throw new Error('FavoritesService not initialized');
-    }
-    return this.favoritesService;
-  }
-
-  public getSettingsService(): SettingsService {
-    if (!this.settingsService) {
-      throw new Error('SettingsService not initialized');
-    }
-    return this.settingsService;
-  }
-
-  public getErrorService(): ErrorService {
-    if (!this.errorService) {
-      throw new Error('ErrorService not initialized');
-    }
-    return this.errorService;
+  public dispose(): void {
+    this.stopEPGUpdate();
   }
 }
-
-export const createServiceManager = () => ServiceManager.getInstance();
