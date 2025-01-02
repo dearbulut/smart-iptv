@@ -1,135 +1,55 @@
-interface Settings {
-  server: {
-    url: string;
-    username: string;
-    password: string;
-  };
-  player: {
-    autoplay: boolean;
-    quality: string;
-    bufferSize: number;
-  };
-  epg: {
-    enabled: boolean;
-    updateInterval: number;
-  };
-}
+import { ISettings } from '@/types';
 
-class SettingsService {
-  private static instance: SettingsService;
-  private settings: Settings;
-  private listeners: ((settings: Settings) => void)[] = [];
+type SettingsListener = (settings: ISettings) => void;
 
-  private readonly DEFAULT_SETTINGS: Settings = {
-    server: {
-      url: '',
-      username: '',
-      password: '',
-    },
-    player: {
-      autoplay: true,
-      quality: 'auto',
-      bufferSize: 30,
-    },
-    epg: {
-      enabled: true,
-      updateInterval: 3600,
-    },
-  };
+const defaultSettings: ISettings = {
+  theme: 'dark',
+  language: 'en',
+  autoplay: true,
+  quality: 'auto',
+  volume: 100,
+  muted: false,
+  favorites: [],
+  recentlyWatched: [],
+  epgTimeshift: 0,
+  epgDays: 7,
+  channelOrder: [],
+  channelGroups: {},
+};
 
-  private constructor() {
-    this.settings = this.loadFromStorage();
+export class SettingsService {
+  private storageKey = 'settings';
+  private listeners: SettingsListener[] = [];
+
+  getSettings(): ISettings {
+    const settings = localStorage.getItem(this.storageKey);
+    return settings ? { ...defaultSettings, ...JSON.parse(settings) } : defaultSettings;
   }
 
-  public static getInstance(): SettingsService {
-    if (!SettingsService.instance) {
-      SettingsService.instance = new SettingsService();
-    }
-    return SettingsService.instance;
+  updateSettings(settings: Partial<ISettings>): void {
+    const currentSettings = this.getSettings();
+    const newSettings = { ...currentSettings, ...settings };
+    localStorage.setItem(this.storageKey, JSON.stringify(newSettings));
+    this.notifyListeners(newSettings);
   }
 
-  public getSettings(): Settings {
-    return { ...this.settings };
-  }
-
-  public updateSettings(newSettings: Partial<Settings>): void {
-    this.settings = {
-      ...this.settings,
-      ...newSettings,
-    };
-    this.saveToStorage();
-    this.notifyListeners();
-  }
-
-  public updateSection<K extends keyof Settings>(
-    section: K,
-    value: Partial<Settings[K]>
-  ): void {
-    this.settings = {
-      ...this.settings,
-      [section]: {
-        ...this.settings[section],
-        ...value,
-      },
-    };
-    this.saveToStorage();
-    this.notifyListeners();
-  }
-
-  public resetToDefaults(): void {
-    this.settings = { ...this.DEFAULT_SETTINGS };
-    this.saveToStorage();
-    this.notifyListeners();
-  }
-
-  public addListener(listener: (settings: Settings) => void): void {
+  addListener(listener: SettingsListener): () => void {
     this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter((l) => l !== listener);
+    };
   }
 
-  public removeListener(listener: (settings: Settings) => void): void {
-    this.listeners = this.listeners.filter((l) => l !== listener);
+  private notifyListeners(settings: ISettings): void {
+    this.listeners.forEach((listener) => listener(settings));
   }
 
-  private notifyListeners(): void {
-    this.listeners.forEach((listener) => listener(this.getSettings()));
-  }
-
-  private saveToStorage(): void {
-    try {
-      localStorage.setItem('settings', JSON.stringify(this.settings));
-    } catch (error) {
-      console.error('Error saving settings:', error);
-    }
-  }
-
-  private loadFromStorage(): Settings {
-    try {
-      const data = localStorage.getItem('settings');
-      if (data) {
-        const parsedSettings = JSON.parse(data);
-        return {
-          ...this.DEFAULT_SETTINGS,
-          ...parsedSettings,
-          server: {
-            ...this.DEFAULT_SETTINGS.server,
-            ...parsedSettings.server,
-          },
-          player: {
-            ...this.DEFAULT_SETTINGS.player,
-            ...parsedSettings.player,
-          },
-          epg: {
-            ...this.DEFAULT_SETTINGS.epg,
-            ...parsedSettings.epg,
-          },
-        };
-      }
-    } catch (error) {
-      console.error('Error loading settings:', error);
-    }
-    return { ...this.DEFAULT_SETTINGS };
+  resetSettings(): void {
+    localStorage.removeItem(this.storageKey);
+    this.notifyListeners(defaultSettings);
   }
 }
 
-export const createSettingsService = () => SettingsService.getInstance();
-export type { Settings };
+export const createSettingsService = () => {
+  return new SettingsService();
+};
