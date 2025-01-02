@@ -16,6 +16,32 @@ import Favorites from '@/pages/Favorites/Favorites';
 
 const queryClient = new QueryClient();
 
+interface PageProps {
+  onBack: () => void;
+}
+
+interface LiveTVProps extends PageProps {
+  onChannelSelect: (channel: IChannel) => void;
+}
+
+interface MoviesProps extends PageProps {
+  onMovieSelect: (movie: IMovie) => void;
+}
+
+interface SeriesProps extends PageProps {
+  onSeriesSelect: (series: ISeries) => void;
+}
+
+interface SettingsProps extends PageProps {
+  onSave: (settings: ISettings) => void;
+}
+
+interface FavoritesProps extends PageProps {
+  onPlayChannel: (channel: IChannel) => void;
+  onPlayMovie: (movie: IMovie) => void;
+  onPlaySeries: (series: ISeries) => void;
+}
+
 const App: React.FC = () => {
   const services = useServices();
   const [currentPage, setCurrentPage] = useState<string>('home');
