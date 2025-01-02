@@ -2,41 +2,31 @@
   "name": "smart-iptv",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview",
-    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "build:tizen": "./build-tizen.sh",
-    "install:tizen": "tizen install -n SmartIPTV.wgt -t $TV_IP",
-    "start:tizen": "tizen run -p SmartIPTV -t $TV_IP"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.0.0",
     "axios": "^1.6.0",
-    "hls.js": "^1.5.0",
-    "i18next": "^23.7.0",
-    "idb": "^8.0.0",
+    "hls.js": "^1.4.12",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-i18next": "^13.3.0",
-    "react-router-dom": "^6.18.0",
-    "styled-components": "^6.1.0",
-    "zustand": "^4.4.6"
+    "styled-components": "^6.1.0"
   },
   "devDependencies": {
-    "@types/node": "^20.8.10",
-    "@types/react": "^18.2.34",
+    "@types/node": "^20.8.9",
+    "@types/react": "^18.2.33",
     "@types/react-dom": "^18.2.14",
-    "@types/styled-components": "^5.1.29",
     "@typescript-eslint/eslint-plugin": "^6.9.1",
     "@typescript-eslint/parser": "^6.9.1",
-    "@vitejs/plugin-react": "^4.1.1",
-    "eslint": "^8.53.0",
-    "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-prettier": "^5.0.1",
-    "prettier": "^3.0.3",
+    "@vitejs/plugin-react": "^4.1.0",
+    "eslint": "^8.52.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
     "typescript": "^5.2.2",
     "vite": "^4.5.0"
   }

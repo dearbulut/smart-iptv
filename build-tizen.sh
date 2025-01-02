@@ -14,10 +14,16 @@ cp -r build/* dist/
 # Copy Tizen config files
 echo "Copying Tizen config files..."
 cp config.xml dist/
-cp icon.png dist/
+cp public/icon.png dist/
 
 # Create Tizen package
 echo "Creating Tizen package..."
-tizen package -t wgt -s smart-iptv -- dist
+if ! command -v tizen &> /dev/null; then
+    echo "Error: Tizen CLI not found. Please install Tizen Studio and add it to your PATH."
+    exit 1
+fi
+
+cd dist
+tizen package -t wgt -s SmartIPTV
 
 echo "Build complete!"
