@@ -6,6 +6,8 @@ import {
   createFavoritesService,
   createSettingsService,
   createErrorService,
+  createMovieService,
+  createSeriesService,
 } from '@/services';
 
 export const useServices = () => {
@@ -23,6 +25,8 @@ export const useServices = () => {
     const epgService = createEPGService(xtreamService);
     const favoritesService = createFavoritesService();
     const errorService = createErrorService();
+    const movieService = createMovieService(xtreamService);
+    const seriesService = createSeriesService(xtreamService);
 
     return {
       xtreamService,
@@ -31,6 +35,8 @@ export const useServices = () => {
       favoritesService,
       settingsService,
       errorService,
+      movieService,
+      seriesService,
     };
   }, []);
 };

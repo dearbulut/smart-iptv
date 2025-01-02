@@ -1,3 +1,5 @@
+import { IEpisode } from './series.types';
+
 export interface IChannel {
   num: number;
   name: string;

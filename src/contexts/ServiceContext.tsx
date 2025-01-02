@@ -6,6 +6,8 @@ import {
   SettingsService,
   ErrorService,
   XtreamService,
+  MovieService,
+  SeriesService,
 } from '@/services';
 
 interface ServiceContextType {
@@ -15,6 +17,8 @@ interface ServiceContextType {
   settingsService: SettingsService;
   errorService: ErrorService;
   xtreamService: XtreamService;
+  movieService: MovieService;
+  seriesService: SeriesService;
 }
 
 const ServiceContext = createContext<ServiceContextType | null>(null);
@@ -81,4 +85,20 @@ export const useXtreamService = () => {
     throw new Error('useXtreamService must be used within a ServiceProvider');
   }
   return context.xtreamService;
+};
+
+export const useMovieService = () => {
+  const context = useContext(ServiceContext);
+  if (!context) {
+    throw new Error('useMovieService must be used within a ServiceProvider');
+  }
+  return context.movieService;
+};
+
+export const useSeriesService = () => {
+  const context = useContext(ServiceContext);
+  if (!context) {
+    throw new Error('useSeriesService must be used within a ServiceProvider');
+  }
+  return context.seriesService;
 };

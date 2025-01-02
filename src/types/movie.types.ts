@@ -12,11 +12,14 @@ export interface IMovie {
   directSource: string;
   added: string;
   backdrop?: string;
+  backdropUrl?: string;
   duration: number;
   plot?: string;
+  description?: string;
   cast?: string;
   director?: string;
   genre?: string;
   releaseDate: string;
   language?: string;
+  series_id?: number;
 }

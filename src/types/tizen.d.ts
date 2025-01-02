@@ -132,6 +132,14 @@ declare namespace tizen {
 }
 
 declare namespace webapis {
+  namespace appcommon {
+    const AppCommonScreenSaverState: {
+      SCREEN_SAVER_OFF: number;
+      SCREEN_SAVER_ON: number;
+    };
+    function setScreenSaver(state: number): void;
+  }
+
   namespace avplay {
     const PLAYER_STATE_NONE: number;
     const PLAYER_STATE_IDLE: number;
@@ -260,4 +268,8 @@ declare namespace tizen.package {
 
 declare namespace tizen.tvinfo {
   function getTVInfo(): tizen.TVInfo;
+}
+
+interface ScreenOrientation {
+  lock(orientation: 'portrait' | 'landscape'): Promise<void>;
 }
