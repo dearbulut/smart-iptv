@@ -1,109 +1,107 @@
-import React, { useState, useEffect } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React, { useState } from 'react';
 import { ThemeProvider } from 'styled-components';
-import { theme } from './styles/theme';
-import { GlobalStyle } from './styles/GlobalStyle';
-import { ServiceProvider } from './contexts/ServiceContext';
-import Home from './pages/Home/Home';
-import LiveTV from './pages/LiveTV/LiveTV';
-import Settings from './pages/Settings/Settings';
-import Favorites from './pages/Favorites/Favorites';
-import { useChannelStore } from './store/channel';
-import NotificationList from './components/Notification/NotificationList';
-import TizenSplashScreen from './components/Loading/TizenSplashScreen';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ServiceProvider } from '@/contexts/ServiceContext';
+import { useServices } from '@/hooks/useServices';
+import { GlobalStyle } from '@/styles/GlobalStyle';
+import { theme } from '@/styles/theme';
+import { IChannel, IMovie, ISeries, ISettings } from '@/types';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
+// Pages
+import LiveTV from '@/pages/LiveTV/LiveTV';
+import Movies from '@/pages/Movies/Movies';
+import Series from '@/pages/Series/Series';
+import Settings from '@/pages/Settings/Settings';
+import Favorites from '@/pages/Favorites/Favorites';
+
+const queryClient = new QueryClient();
 
 const App: React.FC = () => {
-  const [currentSection, setCurrentSection] = useState('home');
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState('Initializing...');
+  const services = useServices();
+  const [currentPage, setCurrentPage] = useState<string>('home');
+  const [selectedChannel, setSelectedChannel] = useState<IChannel | null>(null);
+  const [selectedMovie, setSelectedMovie] = useState<IMovie | null>(null);
+  const [selectedSeries, setSelectedSeries] = useState<ISeries | null>(null);
 
-  const handleNavigate = (section: string) => {
-    setCurrentSection(section);
+  const handleNavigate = (page: string) => {
+    setCurrentPage(page);
   };
 
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        // Simulate loading steps
-        setLoadingMessage('Loading resources...');
-        setLoadingProgress(20);
-        await new Promise(resolve => setTimeout(resolve, 500));
+  const handleChannelSelect = (channel: IChannel) => {
+    setSelectedChannel(channel);
+  };
 
-        setLoadingMessage('Checking network...');
-        setLoadingProgress(40);
-        await new Promise(resolve => setTimeout(resolve, 500));
+  const handleMovieSelect = (movie: IMovie) => {
+    setSelectedMovie(movie);
+  };
 
-        setLoadingMessage('Loading channels...');
-        setLoadingProgress(60);
-        await new Promise(resolve => setTimeout(resolve, 500));
+  const handleSeriesSelect = (series: ISeries) => {
+    setSelectedSeries(series);
+  };
 
-        setLoadingMessage('Loading EPG data...');
-        setLoadingProgress(80);
-        await new Promise(resolve => setTimeout(resolve, 500));
+  const handleSettingsSave = (settings: ISettings) => {
+    services.settingsService.updateSettings(settings);
+    handleNavigate('home');
+  };
 
-        setLoadingMessage('Almost ready...');
-        setLoadingProgress(100);
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error initializing app:', error);
-        setLoadingMessage('Error loading app. Please try again.');
-      }
-    };
-
-    initializeApp();
-  }, []);
-
-  const setSelectedChannel = useChannelStore((state) => state.setSelectedChannel);
-
-  const renderContent = () => {
-    switch (currentSection) {
+  const renderPage = () => {
+    switch (currentPage) {
       case 'live':
-        return <LiveTV />;
+        return (
+          <LiveTV
+            onBack={() => handleNavigate('home')}
+            onChannelSelect={handleChannelSelect}
+          />
+        );
+      case 'movies':
+        return (
+          <Movies
+            onBack={() => handleNavigate('home')}
+            onMovieSelect={handleMovieSelect}
+          />
+        );
+      case 'series':
+        return (
+          <Series
+            onBack={() => handleNavigate('home')}
+            onSeriesSelect={handleSeriesSelect}
+          />
+        );
       case 'settings':
-        return <Settings onBack={() => handleNavigate('home')} />;
+        return (
+          <Settings
+            onBack={() => handleNavigate('home')}
+            onSave={handleSettingsSave}
+          />
+        );
       case 'favorites':
         return (
           <Favorites
-            onChannelSelect={(channel) => {
-              setSelectedChannel(channel);
-              setCurrentSection('live');
-            }}
             onBack={() => handleNavigate('home')}
+            onPlayChannel={handleChannelSelect}
+            onPlayMovie={handleMovieSelect}
+            onPlaySeries={handleSeriesSelect}
           />
         );
       default:
-        return <Home onNavigate={handleNavigate} />;
+        return (
+          <div>
+            <button onClick={() => handleNavigate('live')}>Live TV</button>
+            <button onClick={() => handleNavigate('movies')}>Movies</button>
+            <button onClick={() => handleNavigate('series')}>Series</button>
+            <button onClick={() => handleNavigate('favorites')}>Favorites</button>
+            <button onClick={() => handleNavigate('settings')}>Settings</button>
+          </div>
+        );
     }
   };
 
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
-        <GlobalStyle />
-        <ServiceProvider>
-          {isLoading ? (
-            <TizenSplashScreen
-              message={loadingMessage}
-              progress={loadingProgress}
-            />
-          ) : (
-            <>
-              {renderContent()}
-              <NotificationList />
-            </>
-          )}
+        <ServiceProvider services={services}>
+          <GlobalStyle />
+          {renderPage()}
         </ServiceProvider>
       </ThemeProvider>
     </QueryClientProvider>

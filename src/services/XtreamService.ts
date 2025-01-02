@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { IAuthInfo, ICategory, IChannel, IEPGProgram, ISeriesChannel, IVodChannel } from '../types';
+import { IAuthInfo, ICategory, IChannel, IEPGProgram, ISeriesChannel, IVodChannel } from '@/types';
 
 export class XtreamService {
   private baseUrl: string;
@@ -14,22 +14,30 @@ export class XtreamService {
 
   async authenticate(): Promise<any> {
     try {
-      const response = await axios.get(
-        `${this.baseUrl}/player_api.php?username=${this.username}&password=${this.password}`
-      );
-      return response.data;
+      const response = await this.get('');
+      return response;
     } catch (error) {
       console.error('Authentication error:', error);
       throw error;
     }
   }
 
-  async getLiveStreams(): Promise<IChannel[]> {
+  async get(endpoint: string): Promise<any> {
     try {
       const response = await axios.get(
-        `${this.baseUrl}/player_api.php?username=${this.username}&password=${this.password}&action=get_live_streams`
+        `${this.baseUrl}/player_api.php?username=${this.username}&password=${this.password}${endpoint}`
       );
       return response.data;
+    } catch (error) {
+      console.error('API error:', error);
+      throw error;
+    }
+  }
+
+  async getLiveStreams(): Promise<IChannel[]> {
+    try {
+      const response = await this.get('/live_streams');
+      return response;
     } catch (error) {
       console.error('Error fetching live streams:', error);
       throw error;
@@ -38,10 +46,8 @@ export class XtreamService {
 
   async getLiveCategories(): Promise<ICategory[]> {
     try {
-      const response = await axios.get(
-        `${this.baseUrl}/player_api.php?username=${this.username}&password=${this.password}&action=get_live_categories`
-      );
-      return response.data;
+      const response = await this.get('/live_categories');
+      return response;
     } catch (error) {
       console.error('Error fetching live categories:', error);
       throw error;
@@ -50,10 +56,8 @@ export class XtreamService {
 
   async getVODStreams(): Promise<IVodChannel[]> {
     try {
-      const response = await axios.get(
-        `${this.baseUrl}/player_api.php?username=${this.username}&password=${this.password}&action=get_vod_streams`
-      );
-      return response.data;
+      const response = await this.get('/vod_streams');
+      return response;
     } catch (error) {
       console.error('Error fetching VOD streams:', error);
       throw error;
@@ -62,10 +66,8 @@ export class XtreamService {
 
   async getVODCategories(): Promise<ICategory[]> {
     try {
-      const response = await axios.get(
-        `${this.baseUrl}/player_api.php?username=${this.username}&password=${this.password}&action=get_vod_categories`
-      );
-      return response.data;
+      const response = await this.get('/vod_categories');
+      return response;
     } catch (error) {
       console.error('Error fetching VOD categories:', error);
       throw error;
@@ -74,10 +76,8 @@ export class XtreamService {
 
   async getSeriesStreams(): Promise<ISeriesChannel[]> {
     try {
-      const response = await axios.get(
-        `${this.baseUrl}/player_api.php?username=${this.username}&password=${this.password}&action=get_series`
-      );
-      return response.data;
+      const response = await this.get('/series');
+      return response;
     } catch (error) {
       console.error('Error fetching series streams:', error);
       throw error;
@@ -86,10 +86,8 @@ export class XtreamService {
 
   async getSeriesCategories(): Promise<ICategory[]> {
     try {
-      const response = await axios.get(
-        `${this.baseUrl}/player_api.php?username=${this.username}&password=${this.password}&action=get_series_categories`
-      );
-      return response.data;
+      const response = await this.get('/series_categories');
+      return response;
     } catch (error) {
       console.error('Error fetching series categories:', error);
       throw error;
@@ -98,10 +96,8 @@ export class XtreamService {
 
   async getEPG(streamId: number): Promise<IEPGProgram[]> {
     try {
-      const response = await axios.get(
-        `${this.baseUrl}/player_api.php?username=${this.username}&password=${this.password}&action=get_simple_data_table&stream_id=${streamId}`
-      );
-      return response.data.epg_listings;
+      const response = await this.get(`/epg/${streamId}`);
+      return response.epg_listings;
     } catch (error) {
       console.error('Error fetching EPG:', error);
       throw error;
