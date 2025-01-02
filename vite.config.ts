@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -9,20 +10,20 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  server: {
-    host: true,
-    port: 3000,
-  },
   build: {
-    outDir: 'dist',
-    sourcemap: true,
+    outDir: 'build',
+    assetsDir: 'assets',
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'styled-components'],
-          player: ['hls.js'],
         },
       },
     },
+  },
+  server: {
+    host: true,
+    port: 3000,
   },
 });
