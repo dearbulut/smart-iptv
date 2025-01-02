@@ -1,321 +1,180 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import EPGProgramDetails from './EPGProgramDetails';
-import EPGSearch from './EPGSearch';
-import EPGCategories from './EPGCategories';
-import EPGTimeline from './EPGTimeline';
-import EPGChannelList from './EPGChannelList';
-import { IEPGProgram } from '@/types';
+import { IChannel, IEPGProgram } from '@/types';
+import { useEPGService } from '@/contexts/ServiceContext';
 
 interface EPGGridProps {
-  programs: IEPGProgram[];
   channels: IChannel[];
-  selectedChannelId?: number;
-  currentTime: number;
-  onClose?: () => void;
-  onChannelSelect?: (channel: IChannel) => void;
-  onProgramSelect?: (program: IEPGProgram) => void;
+  onChannelSelect: (channel: IChannel) => void;
+  onProgramSelect: (program: IEPGProgram) => void;
 }
 
 const Container = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: ${({ theme }) => theme.colors.background.card};
-  z-index: 1000;
-  display: flex;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  grid-template-rows: 50px 1fr;
+  height: 100%;
+  background-color: ${({ theme }) => theme.colors.background};
 `;
 
-const Header = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
-`;
-
-const Title = styled.h2`
-  font-size: ${({ theme }) => theme.typography.sizes.xl};
-  color: ${({ theme }) => theme.colors.text.primary};
-`;
-
-const TimelineContainer = styled.div`
+const TimeHeader = styled.div`
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.md};
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
-  overflow-x: auto;
+  padding: 0 1rem;
+  background-color: ${({ theme }) => theme.colors.backgroundDark};
+  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
 `;
 
-const TimeSlot = styled.div<{ current?: boolean }>`
-  min-width: 120px;
-  padding: ${({ theme }) => theme.spacing.sm};
-  text-align: center;
-  font-size: ${({ theme }) => theme.typography.sizes.sm};
-  color: ${({ theme, current }) =>
-    current ? theme.colors.secondary.main : theme.colors.text.secondary};
-  border-bottom: 2px solid
-    ${({ theme, current }) =>
-      current ? theme.colors.secondary.main : 'transparent'};
-`;
-
-const Grid = styled.div`
-  flex: 1;
+const ChannelList = styled.div`
+  grid-column: 1;
+  grid-row: 2;
   overflow-y: auto;
+  border-right: 1px solid ${({ theme }) => theme.colors.border};
 `;
 
-const Program = styled.div<{ selected?: boolean; current?: boolean }>`
+const ProgramGrid = styled.div`
+  grid-column: 2;
+  grid-row: 2;
+  overflow: auto;
+  position: relative;
+`;
+
+const ChannelItem = styled.div<{ selected?: boolean }>`
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.md};
-  padding: ${({ theme }) => theme.spacing.md};
-  background: ${({ theme, selected, current }) =>
-    selected
-      ? theme.colors.background.hover
-      : current
-      ? theme.colors.background.card
-      : 'transparent'};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
+  padding: 0.5rem;
   cursor: pointer;
-  transition: ${({ theme }) => theme.transitions.default};
+  background-color: ${({ theme, selected }) =>
+    selected ? theme.colors.primary : theme.colors.background};
 
-  &.focused {
-    background: ${({ theme }) => theme.colors.background.hover};
-    border: 2px solid ${({ theme }) => theme.colors.secondary.main};
+  &:hover {
+    background-color: ${({ theme }) => theme.colors.primaryLight};
   }
 `;
 
-const Time = styled.div`
-  min-width: 100px;
-  font-size: ${({ theme }) => theme.typography.sizes.md};
-  color: ${({ theme }) => theme.colors.text.secondary};
+const ChannelIcon = styled.img`
+  width: 32px;
+  height: 32px;
+  margin-right: 0.5rem;
+  border-radius: 4px;
 `;
 
-const ProgramInfo = styled.div`
-  flex: 1;
+const ChannelName = styled.div`
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.colors.text};
+`;
+
+const ProgramItem = styled.div<{ width: number; left: number; selected?: boolean }>`
+  position: absolute;
+  height: 50px;
+  left: ${({ left }) => left}px;
+  width: ${({ width }) => width}px;
+  padding: 0.25rem;
+  background-color: ${({ theme, selected }) =>
+    selected ? theme.colors.primary : theme.colors.backgroundDark};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+
+  &:hover {
+    background-color: ${({ theme }) => theme.colors.primaryLight};
+  }
 `;
 
 const ProgramTitle = styled.div`
-  font-size: ${({ theme }) => theme.typography.sizes.md};
+  font-size: 0.8rem;
   font-weight: bold;
-  margin-bottom: ${({ theme }) => theme.spacing.xs};
-`;
-
-const ProgramDescription = styled.div`
-  font-size: ${({ theme }) => theme.typography.sizes.sm};
-  color: ${({ theme }) => theme.colors.text.secondary};
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  color: ${({ theme }) => theme.colors.text};
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
-const Duration = styled.div`
-  font-size: ${({ theme }) => theme.typography.sizes.sm};
-  color: ${({ theme }) => theme.colors.text.secondary};
+const ProgramTime = styled.div`
+  font-size: 0.7rem;
+  color: ${({ theme }) => theme.colors.textSecondary};
 `;
 
-const NoPrograms = styled.div`
-  text-align: center;
-  padding: ${({ theme }) => theme.spacing.xl};
-  color: ${({ theme }) => theme.colors.text.secondary};
-`;
-
-const HelpText = styled.div`
-  text-align: center;
-  padding: ${({ theme }) => theme.spacing.md};
-  color: ${({ theme }) => theme.colors.text.secondary};
-  font-size: ${({ theme }) => theme.typography.sizes.sm};
-  border-top: 1px solid ${({ theme }) => theme.colors.background.hover};
-  margin-top: ${({ theme }) => theme.spacing.md};
-`;
-
-const formatTime = (timestamp: number): string => {
-  const date = new Date(timestamp * 1000);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-};
-
-const formatDuration = (start: string, end: string): string => {
-  const startTime = new Date(start).getTime();
-  const endTime = new Date(end).getTime();
-  const duration = (endTime - startTime) / 1000 / 60; // Duration in minutes
-  const hours = Math.floor(duration / 60);
-  const minutes = Math.floor(duration % 60);
-  return hours > 0
-    ? `${hours}h ${minutes}m`
-    : `${minutes}m`;
-};
-
-const Content = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: ${({ theme }) => theme.spacing.xl};
-`;
-
-const EPGGrid: React.FC<EPGGridProps> = ({
-  programs,
-  channels,
-  selectedChannelId,
-  currentTime,
-  onClose,
-  onChannelSelect,
-  onProgramSelect,
-}) => {
-  const [selectedIndex, setSelectedIndex] = useState(0);
+const EPGGrid: React.FC<EPGGridProps> = ({ channels, onChannelSelect, onProgramSelect }) => {
+  const epgService = useEPGService();
+  const [programs, setPrograms] = useState<{ [key: string]: IEPGProgram[] }>({});
+  const [selectedChannel, setSelectedChannel] = useState<IChannel | null>(null);
   const [selectedProgram, setSelectedProgram] = useState<IEPGProgram | null>(null);
-  const [showSearch, setShowSearch] = useState(false);
-  const [showCategories, setShowCategories] = useState(false);
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      switch (event.key) {
-        case 'ArrowUp':
-          setSelectedIndex((prev) => Math.max(0, prev - 1));
-          break;
-        case 'ArrowDown':
-          setSelectedIndex((prev) =>
-            Math.min(programs.length - 1, prev + 1)
-          );
-          break;
-        case 'Enter':
-          if (programs[selectedIndex]) {
-            setSelectedProgram(programs[selectedIndex]);
-          }
-          break;
-        case 'KeyS':
-          setShowSearch(true);
-          break;
-        case 'KeyC':
-          setShowCategories(true);
-          break;
-        case 'Escape':
-          onClose?.();
-          break;
+    const loadEPG = async () => {
+      const epgData: { [key: string]: IEPGProgram[] } = {};
+      for (const channel of channels) {
+        try {
+          const channelPrograms = await epgService.getEPG(channel.streamId.toString());
+          epgData[channel.streamId] = channelPrograms;
+        } catch (error) {
+          console.error(`Error loading EPG for channel ${channel.name}:`, error);
+        }
       }
+      setPrograms(epgData);
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [programs, selectedIndex, onProgramSelect, onClose]);
+    loadEPG();
+  }, [channels, epgService]);
 
-  const timeSlots = Array.from({ length: 24 }, (_, i) => {
-    const hour = Math.floor(currentTime / 3600) * 3600 + i * 3600;
-    return hour;
-  });
-
-  const getCurrentTimeSlot = (time: number): number => {
-    return Math.floor(time / 3600) * 3600;
+  const handleChannelClick = (channel: IChannel) => {
+    setSelectedChannel(channel);
+    onChannelSelect(channel);
   };
 
-  const currentTimeSlot = getCurrentTimeSlot(currentTime);
+  const handleProgramClick = (program: IEPGProgram) => {
+    setSelectedProgram(program);
+    onProgramSelect(program);
+  };
 
   return (
     <Container>
-      <EPGChannelList
-        channels={channels}
-        selectedChannelId={selectedChannelId}
-        onChannelSelect={onChannelSelect}
-      />
-      <Content>
-        <Header>
-          <Title>Program Guide</Title>
-        </Header>
-
-        <EPGTimeline
-          currentTime={currentTime}
-          duration={86400} // 24 hours
-          onTimeChange={(time) => {
-            // TODO: Handle time change
-            console.log('Time changed:', time);
-          }}
-        />
-
-        <TimelineContainer>
-          {timeSlots.map((slot) => (
-            <TimeSlot key={slot} current={slot === currentTimeSlot}>
-              {formatTime(slot)}
-            </TimeSlot>
-          ))}
-        </TimelineContainer>
-
-        <Grid>
-          {programs.length > 0 ? (
-            programs.map((program, index) => {
-              const isCurrentProgram =
-                currentTime >= new Date(program.start).getTime() / 1000 &&
-                currentTime < new Date(program.end).getTime() / 1000;
-
-              return (
-                <Program
-                  key={`${program.start}-${program.end}`}
-                  selected={index === selectedIndex}
-                  current={isCurrentProgram}
-                  className={index === selectedIndex ? 'focused' : ''}
-                  onClick={() => onProgramSelect?.(program)}
-                >
-                  <Time>
-                    {formatTime(new Date(program.start).getTime() / 1000)}
-                  </Time>
-                  <ProgramInfo>
-                    <ProgramTitle>{program.title}</ProgramTitle>
-                    {program.description && (
-                      <ProgramDescription>{program.description}</ProgramDescription>
-                    )}
-                  </ProgramInfo>
-                  <Duration>
-                    {formatDuration(program.start, program.end)}
-                  </Duration>
-                </Program>
-              );
-            })
-          ) : (
-            <NoPrograms>No program information available</NoPrograms>
-          )}
-        </Grid>
-
-        <HelpText>
-          Press UP/DOWN to navigate • Press ENTER to view details • Press S to search • Press C for categories • Press RETURN to close
-        </HelpText>
-
-        {selectedProgram && (
-          <EPGProgramDetails
-            program={selectedProgram}
-            onClose={() => setSelectedProgram(null)}
-            onRecord={() => {
-              // TODO: Implement recording functionality
-              console.log('Record program:', selectedProgram);
-            }}
-            onReminder={() => {
-              // TODO: Implement reminder functionality
-              console.log('Set reminder for program:', selectedProgram);
-            }}
-          />
-        )}
-
-        {showSearch && (
-          <EPGSearch
-            programs={programs}
-            onSelect={(program) => {
-              setSelectedProgram(program);
-              setShowSearch(false);
-            }}
-            onClose={() => setShowSearch(false)}
-          />
-        )}
-
-        {showCategories && (
-          <EPGCategories
-            programs={programs}
-            onSelect={(program) => {
-              setSelectedProgram(program);
-              setShowCategories(false);
-            }}
-            onClose={() => setShowCategories(false)}
-          />
-        )}
-      </Content>
+      <TimeHeader>
+        {/* Time headers */}
+      </TimeHeader>
+      <ChannelList>
+        {channels.map((channel) => (
+          <ChannelItem
+            key={channel.streamId}
+            selected={selectedChannel?.streamId === channel.streamId}
+            onClick={() => handleChannelClick(channel)}
+          >
+            <ChannelIcon
+              src={channel.streamIcon}
+              alt={channel.name}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/placeholder.png';
+              }}
+            />
+            <ChannelName>{channel.name}</ChannelName>
+          </ChannelItem>
+        ))}
+      </ChannelList>
+      <ProgramGrid>
+        {channels.map((channel) => (
+          <div key={channel.streamId}>
+            {programs[channel.streamId]?.map((program) => (
+              <ProgramItem
+                key={program.id}
+                width={100} // Calculate based on duration
+                left={0} // Calculate based on start time
+                selected={selectedProgram?.id === program.id}
+                onClick={() => handleProgramClick(program)}
+              >
+                <ProgramTitle>{program.title}</ProgramTitle>
+                <ProgramTime>
+                  {new Date(program.start).toLocaleTimeString()} -{' '}
+                  {new Date(program.end).toLocaleTimeString()}
+                </ProgramTime>
+              </ProgramItem>
+            ))}
+          </div>
+        ))}
+      </ProgramGrid>
     </Container>
   );
 };

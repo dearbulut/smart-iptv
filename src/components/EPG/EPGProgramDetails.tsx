@@ -1,146 +1,72 @@
-import React from 'react';
-import styled, { keyframes } from 'styled-components';
-import EPGRecording from './EPGRecording';
-import EPGReminder from './EPGReminder';
+import React, { useState, useEffect } from 'react';
+import styled from 'styled-components';
 import { IEPGProgram } from '@/types';
 
 interface EPGProgramDetailsProps {
   program: IEPGProgram;
-  onClose?: () => void;
+  onClose: () => void;
   onRecord?: () => void;
   onReminder?: () => void;
 }
 
-const slideIn = keyframes`
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-`;
-
 const Container = styled.div`
   position: fixed;
   top: 0;
+  left: 0;
   right: 0;
   bottom: 0;
-  width: 400px;
-  background: ${({ theme }) => theme.colors.background.card};
-  padding: ${({ theme }) => theme.spacing.xl};
-  animation: ${slideIn} 0.3s ease-in-out;
-  z-index: 1000;
   display: flex;
-  flex-direction: column;
-  overflow-y: auto;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 1000;
+`;
+
+const Content = styled.div`
+  width: 80%;
+  max-width: 600px;
+  background-color: ${({ theme }) => theme.colors.background};
+  border-radius: 8px;
+  padding: 2rem;
 `;
 
 const Title = styled.h2`
-  font-size: ${({ theme }) => theme.typography.sizes.xl};
-  color: ${({ theme }) => theme.colors.text.primary};
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
+  margin: 0 0 1rem;
+  color: ${({ theme }) => theme.colors.text};
 `;
 
 const Time = styled.div`
-  font-size: ${({ theme }) => theme.typography.sizes.lg};
-  color: ${({ theme }) => theme.colors.text.secondary};
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
-`;
-
-const Duration = styled.div`
-  font-size: ${({ theme }) => theme.typography.sizes.md};
-  color: ${({ theme }) => theme.colors.text.secondary};
-  margin-bottom: ${({ theme }) => theme.spacing.xl};
-  padding: ${({ theme }) => theme.spacing.sm};
-  background: ${({ theme }) => theme.colors.background.main};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  display: inline-block;
+  margin-bottom: 1rem;
+  color: ${({ theme }) => theme.colors.textSecondary};
 `;
 
 const Description = styled.div`
-  font-size: ${({ theme }) => theme.typography.sizes.md};
-  color: ${({ theme }) => theme.colors.text.primary};
-  line-height: 1.6;
-  margin-bottom: ${({ theme }) => theme.spacing.xl};
-  flex: 1;
+  margin-bottom: 1rem;
+  color: ${({ theme }) => theme.colors.text};
+  white-space: pre-wrap;
 `;
 
-const MetaInfo = styled.div`
+const ButtonGroup = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.md};
-  padding: ${({ theme }) => theme.spacing.lg};
-  background: ${({ theme }) => theme.colors.background.main};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  margin-bottom: ${({ theme }) => theme.spacing.xl};
+  gap: 1rem;
+  margin-top: 2rem;
 `;
 
-const MetaItem = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const MetaLabel = styled.div`
-  font-size: ${({ theme }) => theme.typography.sizes.sm};
-  color: ${({ theme }) => theme.colors.text.secondary};
-`;
-
-const MetaValue = styled.div`
-  font-size: ${({ theme }) => theme.typography.sizes.sm};
-  color: ${({ theme }) => theme.colors.text.primary};
-`;
-
-const ButtonContainer = styled.div`
-  display: flex;
-  gap: ${({ theme }) => theme.spacing.md};
-  margin-top: auto;
-`;
-
-const Button = styled.button<{ primary?: boolean }>`
-  flex: 1;
-  padding: ${({ theme }) => theme.spacing.md};
-  background: ${({ theme, primary }) =>
-    primary ? theme.colors.secondary.main : 'transparent'};
-  border: 2px solid ${({ theme }) => theme.colors.secondary.main};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  color: ${({ theme, primary }) =>
-    primary ? theme.colors.background.main : theme.colors.secondary.main};
-  font-size: ${({ theme }) => theme.typography.sizes.md};
+const Button = styled.button<{ primary?: boolean; focused?: boolean }>`
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  background-color: ${({ theme, primary }) =>
+    primary ? theme.colors.primary : theme.colors.backgroundDark};
+  color: ${({ theme }) => theme.colors.text};
   cursor: pointer;
-  transition: ${({ theme }) => theme.transitions.default};
+  outline: ${({ theme, focused }) => (focused ? `2px solid ${theme.colors.primary}` : 'none')};
 
-  &.focused {
-    background: ${({ theme }) => theme.colors.secondary.main};
-    color: ${({ theme }) => theme.colors.background.main};
+  &:hover {
+    background-color: ${({ theme, primary }) =>
+      primary ? theme.colors.primaryDark : theme.colors.backgroundLight};
   }
 `;
-
-const formatTime = (dateStr: string) => {
-  const date = new Date(dateStr);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-};
-
-const formatDate = (dateStr: string) => {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString([], {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-};
-
-const formatDuration = (start: string, end: string): string => {
-  const startTime = new Date(start).getTime();
-  const endTime = new Date(end).getTime();
-  const duration = (endTime - startTime) / 1000 / 60; // Duration in minutes
-  const hours = Math.floor(duration / 60);
-  const minutes = Math.floor(duration % 60);
-  return hours > 0
-    ? `${hours}h ${minutes}m`
-    : `${minutes}m`;
-};
 
 const EPGProgramDetails: React.FC<EPGProgramDetailsProps> = ({
   program,
@@ -148,30 +74,40 @@ const EPGProgramDetails: React.FC<EPGProgramDetailsProps> = ({
   onRecord,
   onReminder,
 }) => {
-  const [showRecording, setShowRecording] = useState(false);
-  const [showReminder, setShowReminder] = useState(false);
+  const [focusedButton, setFocusedButton] = useState<'record' | 'reminder' | 'close'>('close');
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       switch (event.key) {
         case 'ArrowLeft':
-          if (focusedButton === 'reminder') {
-            setFocusedButton('record');
-          }
+          setFocusedButton((prev) => {
+            if (prev === 'close') return onRecord ? 'record' : 'close';
+            if (prev === 'record') return onReminder ? 'reminder' : 'close';
+            return 'close';
+          });
           break;
         case 'ArrowRight':
-          if (focusedButton === 'record') {
-            setFocusedButton('reminder');
-          }
+          setFocusedButton((prev) => {
+            if (prev === 'close') return onReminder ? 'reminder' : onRecord ? 'record' : 'close';
+            if (prev === 'record') return 'close';
+            return onRecord ? 'record' : 'close';
+          });
           break;
         case 'Enter':
-          if (focusedButton === 'record') {
-            setShowRecording(true);
-          } else if (focusedButton === 'reminder') {
-            setShowReminder(true);
+          switch (focusedButton) {
+            case 'record':
+              onRecord?.();
+              break;
+            case 'reminder':
+              onReminder?.();
+              break;
+            case 'close':
+              onClose();
+              break;
           }
           break;
         case 'Escape':
-          onClose?.();
+          onClose();
           break;
       }
     };
@@ -180,72 +116,53 @@ const EPGProgramDetails: React.FC<EPGProgramDetailsProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose, onRecord, onReminder, focusedButton]);
 
-  const [focusedButton, setFocusedButton] = useState<'record' | 'reminder'>('record');
-
   return (
     <Container>
-      <Title>{program.title}</Title>
-      <Time>
-        {formatTime(program.start)} - {formatTime(program.end)}
-      </Time>
-      <Duration>{formatDuration(program.start, program.end)}</Duration>
-
-      <MetaInfo>
-        <MetaItem>
-          <MetaLabel>Date</MetaLabel>
-          <MetaValue>{formatDate(program.start)}</MetaValue>
-        </MetaItem>
-        <MetaItem>
-          <MetaLabel>Language</MetaLabel>
-          <MetaValue>{program.lang}</MetaValue>
-        </MetaItem>
-        <MetaItem>
-          <MetaLabel>EPG ID</MetaLabel>
-          <MetaValue>{program.epgId}</MetaValue>
-        </MetaItem>
-      </MetaInfo>
-
-      {program.description && (
-        <Description>{program.description}</Description>
-      )}
-
-      <ButtonContainer>
-        <Button
-          className={focusedButton === 'record' ? 'focused' : ''}
-          onClick={() => setShowRecording(true)}
-        >
-          Record
-        </Button>
-        <Button
-          primary
-          className={focusedButton === 'reminder' ? 'focused' : ''}
-          onClick={onReminder}
-        >
-          Set Reminder
-        </Button>
-      </ButtonContainer>
-
-      {showRecording && (
-        <EPGRecording
-          program={program}
-          onClose={() => setShowRecording(false)}
-          onConfirm={(settings) => {
-            onRecord?.();
-            setShowRecording(false);
-          }}
-        />
-      )}
-
-      {showReminder && (
-        <EPGReminder
-          program={program}
-          onClose={() => setShowReminder(false)}
-          onConfirm={(settings) => {
-            onReminder?.();
-            setShowReminder(false);
-          }}
-        />
-      )}
+      <Content>
+        <Title>{program.title}</Title>
+        <Time>
+          {new Date(program.start).toLocaleString()} - {new Date(program.end).toLocaleString()}
+        </Time>
+        {program.description && <Description>{program.description}</Description>}
+        {program.genre && <div>Genre: {program.genre}</div>}
+        {program.cast && <div>Cast: {program.cast}</div>}
+        {program.director && <div>Director: {program.director}</div>}
+        {program.rating && <div>Rating: {program.rating}</div>}
+        <ButtonGroup>
+          {onRecord && (
+            <Button
+              focused={focusedButton === 'record'}
+              onClick={() => {
+                setFocusedButton('record');
+                onRecord();
+              }}
+            >
+              Record
+            </Button>
+          )}
+          {onReminder && (
+            <Button
+              focused={focusedButton === 'reminder'}
+              onClick={() => {
+                setFocusedButton('reminder');
+                onReminder();
+              }}
+            >
+              Set Reminder
+            </Button>
+          )}
+          <Button
+            primary
+            focused={focusedButton === 'close'}
+            onClick={() => {
+              setFocusedButton('close');
+              onClose();
+            }}
+          >
+            Close
+          </Button>
+        </ButtonGroup>
+      </Content>
     </Container>
   );
 };

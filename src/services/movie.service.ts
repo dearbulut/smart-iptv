@@ -53,7 +53,6 @@ export class MovieService {
         genre: movie.genre,
         releaseDate: movie.releasedate || movie.release_date || new Date().toISOString(),
         language: movie.language || 'Unknown',
-        series_id: movie.series_id,
       };
     } catch (error) {
       console.error('Error fetching movie info:', error);

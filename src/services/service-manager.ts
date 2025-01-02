@@ -108,4 +108,17 @@ export class ServiceManager {
   public dispose(): void {
     this.stopEPGUpdate();
   }
+
+  public getServices() {
+    return {
+      xtreamService: this.xtreamService,
+      channelService: this.channelService,
+      epgService: this.epgService,
+      favoritesService: this.favoritesService,
+      settingsService: this.settingsService,
+      errorService: this.errorService,
+      movieService: this.movieService,
+      seriesService: this.seriesService,
+    };
+  }
 }

@@ -6,3 +6,4 @@ export * from './settings.service';
 export * from './error.service';
 export * from './movie.service';
 export * from './series.service';
+export * from './service-manager';
